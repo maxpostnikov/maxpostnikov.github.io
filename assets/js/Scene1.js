@@ -12,30 +12,40 @@ class Scene1 extends Phaser.Scene {
     }
 
     create() {
-        // Game Grid
-        this.gridSize = 8;
+        // Game Grid properties
         this.tileWidth = 80;
         this.tileHeight = 80;
         this.gemScale = 80 / 105;
+        
+        // Dynamic grid size based on screen
+        this.gridRows = Math.floor(this.scale.height / this.tileHeight);
+        this.gridCols = Math.floor(this.scale.width / this.tileWidth);
+
         this.grid = [];
         this.gems = this.add.group();
         this.selectedGem = null;
-        this.swapping = false;
         this.wiggleTween = null;
+        
+        // Animation tracking
+        this.isAnimating = false; // Flag for active animations
+        this.resizePending = false;
 
         // Background
-        this.add.image(0, 0, "background").setOrigin(0,0);
+        this.background = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, "background").setOrigin(0,0);
 
         // Create Grid
-        for (let y = 0; y < this.gridSize; y++) {
+        for (let y = 0; y < this.gridRows; y++) {
             this.grid[y] = [];
-            for (let x = 0; x < this.gridSize; x++) {
+            for (let x = 0; x < this.gridCols; x++) {
                 this.addGem(x, y);
             }
         }
 
         // Scene-wide input handler
         this.input.on('gameobjectdown', this.handleGemClick, this);
+
+        // Listen for resize events
+        this.scale.on('resize', this.onResize, this);
 
         // Initial check for matches to ensure a valid starting board
         this.time.delayedCall(500, this.checkMatches, [], this);
@@ -55,7 +65,7 @@ class Scene1 extends Phaser.Scene {
         // Ignore clicks on non-gem objects
         if (!this.gems.contains(gem)) return;
 
-        if (this.swapping) return;
+        if (this.isAnimating) return;
 
         // If a gem is already selected, stop its wiggle
         if (this.selectedGem) {
@@ -85,7 +95,7 @@ class Scene1 extends Phaser.Scene {
             // Second gem selected, attempt swap
             // The wiggle is already stopped from the check at the top
             if (this.canSwap(this.selectedGem, gem)) {
-                this.swapping = true;
+                this.isAnimating = true; // Lock input
                 this.swapGems(this.selectedGem, gem);
             } else {
                 // Invalid swap, deselect first gem
@@ -172,7 +182,10 @@ class Scene1 extends Phaser.Scene {
                     y: gem2Pos.y,
                     duration: 200,
                     onComplete: () => {
-                        this.swapping = false; // Allow new swaps
+                        this.isAnimating = false;
+                        if (this.resizePending) {
+                            this.onResize(this.scale.gameSize);
+                        }
                     }
                 });
             }
@@ -183,6 +196,7 @@ class Scene1 extends Phaser.Scene {
         let matches = this.getMatches();
 
         if (matches.length > 0) {
+            this.isAnimating = true;
             this.removeMatches(matches); // Starts the disappearance animation
 
             // Wait for the animation to finish before dropping and filling
@@ -194,18 +208,21 @@ class Scene1 extends Phaser.Scene {
                 this.time.delayedCall(500, this.checkMatches, [], this);
             }, [], this);
         } else {
-            this.swapping = false; // Allow further swaps if no matches found
+            this.isAnimating = false;
+            if (this.resizePending) {
+                this.onResize(this.scale.gameSize);
+            }
         }
     }
 
     getMatches() {
         let matches = [];
-        const BATCH_TYPES = { HORIZONTAL: 'H', VERTICAL: 'V' };
 
         // Find horizontal matches
-        for (let y = 0; y < this.gridSize; y++) {
+        for (let y = 0; y < this.gridRows; y++) {
+            if (!this.grid[y]) continue;
             let currentBatch = [];
-            for (let x = 0; x < this.gridSize; x++) {
+            for (let x = 0; x < this.gridCols; x++) {
                 const gem = this.grid[y][x];
                 if (gem && currentBatch.length > 0 && gem.frame.name === currentBatch[0].frame.name) {
                     currentBatch.push(gem);
@@ -213,7 +230,7 @@ class Scene1 extends Phaser.Scene {
                     if (currentBatch.length >= 3) {
                         matches = matches.concat(currentBatch);
                     }
-                    currentBatch = [gem];
+                    currentBatch = gem ? [gem] : [];
                 }
             }
             if (currentBatch.length >= 3) {
@@ -222,9 +239,10 @@ class Scene1 extends Phaser.Scene {
         }
 
         // Find vertical matches
-        for (let x = 0; x < this.gridSize; x++) {
+        for (let x = 0; x < this.gridCols; x++) {
             let currentBatch = [];
-            for (let y = 0; y < this.gridSize; y++) {
+            for (let y = 0; y < this.gridRows; y++) {
+                if (!this.grid[y]) continue;
                 const gem = this.grid[y][x];
                 if (gem && currentBatch.length > 0 && gem.frame.name === currentBatch[0].frame.name) {
                     currentBatch.push(gem);
@@ -232,7 +250,7 @@ class Scene1 extends Phaser.Scene {
                     if (currentBatch.length >= 3) {
                         matches = matches.concat(currentBatch);
                     }
-                    currentBatch = [gem];
+                    currentBatch = gem ? [gem] : [];
                 }
             }
             if (currentBatch.length >= 3) {
@@ -262,12 +280,12 @@ class Scene1 extends Phaser.Scene {
     }
 
     dropGems() {
-        for (let x = 0; x < this.gridSize; x++) {
-            for (let y = this.gridSize - 1; y >= 0; y--) {
-                if (this.grid[y][x] === null) {
+        for (let x = 0; x < this.gridCols; x++) {
+            for (let y = this.gridRows - 1; y >= 0; y--) {
+                if (this.grid[y] && this.grid[y][x] === null) {
                     // Find the first gem above it
                     for (let yy = y - 1; yy >= 0; yy--) {
-                        if (this.grid[yy][x] !== null) {
+                        if (this.grid[yy] && this.grid[yy][x] !== null) {
                             let gem = this.grid[yy][x];
                             this.grid[y][x] = gem;
                             this.grid[yy][x] = null;
@@ -289,9 +307,9 @@ class Scene1 extends Phaser.Scene {
     }
 
     fillNewGems() {
-        for (let x = 0; x < this.gridSize; x++) {
-            for (let y = 0; y < this.gridSize; y++) {
-                if (this.grid[y][x] === null) {
+        for (let x = 0; x < this.gridCols; x++) {
+            for (let y = 0; y < this.gridRows; y++) {
+                if (this.grid[y] && this.grid[y][x] === null) {
                     let newGem = this.addGem(x, y);
                     newGem.y = -this.tileHeight; // Start above the grid
 
@@ -304,6 +322,110 @@ class Scene1 extends Phaser.Scene {
                 }
             }
         }
+    }
+
+    onResize(gameSize) {
+        if (this.isAnimating) {
+            this.resizePending = true;
+            return;
+        }
+        this.handleResize(gameSize);
+    }
+
+    handleResize(gameSize) {
+        this.resizePending = false;
+        
+        this.background.setSize(gameSize.width, gameSize.height);
+
+        if (this.selectedGem) {
+            if (this.wiggleTween) this.wiggleTween.complete();
+            this.selectedGem.setScale(this.gemScale);
+            this.selectedGem = null;
+        }
+
+        const oldRows = this.gridRows;
+        const oldCols = this.gridCols;
+        const newRows = Math.floor(gameSize.height / this.tileHeight);
+        const newCols = Math.floor(gameSize.width / this.tileWidth);
+
+        if (oldRows === newRows && oldCols === newCols) {
+            return; // No change
+        }
+
+        // Removals first
+        if (newCols < oldCols) {
+            this.removeCols(newCols, oldCols, oldRows);
+        }
+        if (newRows < oldRows) {
+            this.removeRows(newRows, oldRows, newCols);
+        }
+
+        this.gridRows = newRows;
+        this.gridCols = newCols;
+        
+        // Additions
+        if (newCols > oldCols) {
+            this.addCols(oldCols, newCols, oldRows);
+        }
+        if (newRows > oldRows) {
+            this.addRows(oldRows, newRows, newCols);
+        }
+
+        if (newCols > oldCols || newRows > oldRows) {
+            this.isAnimating = true;
+            this.dropGems();
+            this.fillNewGems();
+            this.time.delayedCall(500, () => this.checkMatches(), [], this);
+        } else {
+            this.time.delayedCall(200, () => this.checkMatches(), [], this);
+        }
+    }
+
+    addCols(from, to, numRows) {
+        for (let y = 0; y < numRows; y++) {
+            if (!this.grid[y]) continue; // In case rows were removed
+            for (let x = from; x < to; x++) {
+                this.grid[y][x] = null;
+            }
+        }
+    }
+
+    removeCols(newCols, oldCols, numRows) {
+        for (let x = newCols; x < oldCols; x++) {
+            for (let y = 0; y < numRows; y++) {
+                if (this.grid[y] && this.grid[y][x]) {
+                    this.grid[y][x].destroy();
+                    this.grid[y][x] = null;
+                }
+            }
+        }
+        for (let y = 0; y < numRows; y++) {
+            if (this.grid[y]) {
+                this.grid[y].length = newCols;
+            }
+        }
+    }
+
+    addRows(from, to, numCols) {
+        for (let y = from; y < to; y++) {
+            this.grid[y] = [];
+            for (let x = 0; x < numCols; x++) {
+                this.grid[y][x] = null;
+            }
+        }
+    }
+
+    removeRows(newRows, oldRows, numCols) {
+        for (let y = newRows; y < oldRows; y++) {
+            if (this.grid[y]) {
+                for (let x = 0; x < numCols; x++) {
+                    if (this.grid[y][x]) {
+                        this.grid[y][x].destroy();
+                    }
+                }
+            }
+        }
+        this.grid.length = newRows;
     }
 
 }
