@@ -325,6 +325,11 @@ class Scene1 extends Phaser.Scene {
     }
 
     onResize(gameSize) {
+        // Immediately resize the background
+        if (this.background) {
+            this.background.setSize(gameSize.width, gameSize.height);
+        }
+
         if (this.isAnimating) {
             this.resizePending = true;
             return;
@@ -334,8 +339,6 @@ class Scene1 extends Phaser.Scene {
 
     handleResize(gameSize) {
         this.resizePending = false;
-        
-        this.background.setSize(gameSize.width, gameSize.height);
 
         if (this.selectedGem) {
             if (this.wiggleTween) this.wiggleTween.complete();
