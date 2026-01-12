@@ -43,10 +43,10 @@ class Scene1 extends Phaser.Scene {
         }
 
         // Scene-wide input handler
-        this.input.on('gameobjectdown', this.handleGemClick, this);
+        this.input.on("gameobjectdown", this.handleGemClick, this);
 
         // Listen for resize events
-        this.scale.on('resize', this.onResize, this);
+        this.scale.on("resize", this.onResize, this);
 
         // Swipe properties
         this.swipeMinDistance = 20;
@@ -56,8 +56,8 @@ class Scene1 extends Phaser.Scene {
         this.swipeStartX = 0;
         this.swipeStartY = 0;
 
-        this.input.on('pointerdown', this.handlePointerDown, this);
-        this.input.on('pointerup', this.handlePointerUp, this);
+        this.input.on("pointerdown", this.handlePointerDown, this);
+        this.input.on("pointerup", this.handlePointerUp, this);
 
 
         // Initial check for matches to ensure a valid starting board
@@ -177,7 +177,7 @@ class Scene1 extends Phaser.Scene {
         // Shake and revert animation
         this.tweens.add({
             targets: [gem1, gem2],
-            x: '+=4', // Shake right
+            x: "+=4", // Shake right
             yoyo: true,
             repeat: 2,
             duration: 50,
@@ -309,7 +309,7 @@ class Scene1 extends Phaser.Scene {
                                 targets: gem,
                                 y: y * this.tileHeight + this.tileHeight / 2,
                                 duration: 400,
-                                ease: 'Bounce.easeOut'
+                                ease: "Bounce.easeOut"
                             });
                             break;
                         }
@@ -330,7 +330,7 @@ class Scene1 extends Phaser.Scene {
                         targets: newGem,
                         y: y * this.tileHeight + this.tileHeight / 2,
                         duration: 400,
-                        ease: 'Bounce.easeOut'
+                        ease: "Bounce.easeOut"
                     });
                 }
             }
@@ -511,9 +511,9 @@ class Scene1 extends Phaser.Scene {
     getSwipeDirection(dx, dy) {
         // Determine if it's primarily horizontal or vertical
         if (Math.abs(dx) > Math.abs(dy)) {
-            return dx > 0 ? 'right' : 'left'; // Horizontal swipe
+            return dx > 0 ? "right" : "left"; // Horizontal swipe
         } else {
-            return dy > 0 ? 'down' : 'up';     // Vertical swipe
+            return dy > 0 ? "down" : "up";     // Vertical swipe
         }
     }
 
@@ -524,20 +524,20 @@ class Scene1 extends Phaser.Scene {
 
         // Adjust coordinates based on swipe direction
         switch (direction) {
-            case 'left':
-                x--;
-                break;
-            case 'right':
-                x++;
-                break;
-            case 'up':
-                y--;
-                break;
-            case 'down':
-                y++;
-                break;
-            default:
-                return null; // Unknown direction
+        case "left":
+            x--;
+            break;
+        case "right":
+            x++;
+            break;
+        case "up":
+            y--;
+            break;
+        case "down":
+            y++;
+            break;
+        default:
+            return null; // Unknown direction
         }
 
         // Check if the calculated neighbor coordinates are within the grid bounds
