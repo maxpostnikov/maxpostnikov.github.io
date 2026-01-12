@@ -48,6 +48,18 @@ class Scene1 extends Phaser.Scene {
         // Listen for resize events
         this.scale.on('resize', this.onResize, this);
 
+        // Swipe properties
+        this.swipeMinDistance = 20;
+        this.swipeMinTime = 100; //ms
+        this.swipeMaxTime = 1000; //ms
+        this.swipeStartTime = 0;
+        this.swipeStartX = 0;
+        this.swipeStartY = 0;
+
+        this.input.on('pointerdown', this.handlePointerDown, this);
+        this.input.on('pointerup', this.handlePointerUp, this);
+
+
         // Initial check for matches to ensure a valid starting board
         this.time.delayedCall(500, this.checkMatches, [], this);
     }
@@ -430,6 +442,110 @@ class Scene1 extends Phaser.Scene {
             }
         }
         this.grid.length = newRows;
+    }
+
+
+    handlePointerDown(pointer) {
+        if (this.isAnimating) return; // Prevent new swipes during animation
+
+        this.swipeStartX = pointer.x;
+        this.swipeStartY = pointer.y;
+        this.swipeStartTime = pointer.time;
+    }
+
+    handlePointerUp(pointer) {
+        if (this.isAnimating) return; // Ignore if game is animating
+
+        const swipeTime = pointer.time - this.swipeStartTime;
+        if (swipeTime < this.swipeMinTime || swipeTime > this.swipeMaxTime) {
+            return; // Not a swipe (too fast or too slow)
+        }
+
+        const dx = pointer.x - this.swipeStartX;
+        const dy = pointer.y - this.swipeStartY;
+
+        const swipeDistance = Math.sqrt(dx * dx + dy * dy); // Use Euclidean distance for overall swipe distance
+
+        if (swipeDistance < this.swipeMinDistance) {
+            return; // Not a swipe (too short)
+        }
+
+        const swipeDirection = this.getSwipeDirection(dx, dy);
+        if (!swipeDirection) {
+            return; // No clear direction
+        }
+
+        // Determine the grid position where the swipe started
+        const startGridX = Math.floor(this.swipeStartX / this.tileWidth);
+        const startGridY = Math.floor(this.swipeStartY / this.tileHeight);
+        
+        // Ensure swipe started within the valid grid boundaries
+        if (startGridX < 0 || startGridX >= this.gridCols || startGridY < 0 || startGridY >= this.gridRows) {
+            return; // Swipe started outside grid bounds
+        }
+
+        const swipedGem = this.grid[startGridY][startGridX];
+        if (!swipedGem) {
+            return; // No gem at the swipe start position
+        }
+
+        const neighborGem = this.getNeighbor(swipedGem, swipeDirection);
+
+        if (swipedGem && neighborGem) {
+            // Deselect any currently selected gem to avoid conflicts with swipe
+            if(this.selectedGem) {
+                if (this.wiggleTween) this.wiggleTween.stop();
+                this.selectedGem.angle = 0;
+                this.selectedGem.setScale(this.gemScale);
+                this.selectedGem = null;
+            }
+
+            // Attempt to swap the gems if it's a valid move
+            if (this.canSwap(swipedGem, neighborGem)) {
+                this.isAnimating = true; // Lock input during animation
+                this.swapGems(swipedGem, neighborGem);
+            }
+        }
+    }
+
+    getSwipeDirection(dx, dy) {
+        // Determine if it's primarily horizontal or vertical
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'right' : 'left'; // Horizontal swipe
+        } else {
+            return dy > 0 ? 'down' : 'up';     // Vertical swipe
+        }
+    }
+
+    getNeighbor(gem, direction) {
+        if (!gem) return null; // Ensure a valid gem is provided
+
+        let { x, y } = gem.gridPosition; // Get the grid coordinates of the gem
+
+        // Adjust coordinates based on swipe direction
+        switch (direction) {
+            case 'left':
+                x--;
+                break;
+            case 'right':
+                x++;
+                break;
+            case 'up':
+                y--;
+                break;
+            case 'down':
+                y++;
+                break;
+            default:
+                return null; // Unknown direction
+        }
+
+        // Check if the calculated neighbor coordinates are within the grid bounds
+        if (x >= 0 && x < this.gridCols && y >= 0 && y < this.gridRows) {
+            return this.grid[y][x]; // Return the neighbor gem
+        }
+
+        return null; // No valid neighbor found
     }
 
 }
