@@ -23,3 +23,18 @@ The project follows a simple structure with JavaScript modules.
 *   `assets/js/game.js`: Initializes the Phaser game and the main scene.
 *   `assets/js/Scene1.js`: Contains the core gameplay logic for the Match-3 game.
 *   `assets/images/`: Contains all the image assets for the game.
+
+## Linting
+
+This project uses [ESLint](https://eslint.org/) for maintaining code quality and consistency. ESLint analyzes your code for potential errors, stylistic issues, and adherence to best practices.
+
+**Configuration:**
+ESLint is configured via `eslint.config.js` at the project root. This file defines the rules and environment for linting.
+
+**Running the Linter:**
+You can run ESLint to check and automatically fix issues in your JavaScript files using the following command:
+
+```bash
+npm exec eslint assets/js/Scene1.js -- --fix
+```
+Replace `assets/js/Scene1.js` with the path to the file you wish to lint, or omit it to lint all configured JavaScript files.
