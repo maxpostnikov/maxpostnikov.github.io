@@ -16,10 +16,11 @@ class Scene1 extends Phaser.Scene {
         this.tileWidth = 80;
         this.tileHeight = 80;
         this.gemScale = 80 / 105;
+        this.TILE_VISIBILITY_THRESHOLD = 1 / 3;
         
         // Dynamic grid size based on screen
-        this.gridRows = Math.floor(this.scale.height / this.tileHeight);
-        this.gridCols = Math.floor(this.scale.width / this.tileWidth);
+        this.gridRows = Math.floor(this.scale.height / this.tileHeight + (1 - this.TILE_VISIBILITY_THRESHOLD));
+        this.gridCols = Math.floor(this.scale.width / this.tileWidth + (1 - this.TILE_VISIBILITY_THRESHOLD));
 
         this.grid = [];
         this.gems = this.add.group();
@@ -348,8 +349,8 @@ class Scene1 extends Phaser.Scene {
 
         const oldRows = this.gridRows;
         const oldCols = this.gridCols;
-        const newRows = Math.floor(gameSize.height / this.tileHeight);
-        const newCols = Math.floor(gameSize.width / this.tileWidth);
+        const newRows = Math.floor(gameSize.height / this.tileHeight + (1 - this.TILE_VISIBILITY_THRESHOLD));
+        const newCols = Math.floor(gameSize.width / this.tileWidth + (1 - this.TILE_VISIBILITY_THRESHOLD));
 
         if (oldRows === newRows && oldCols === newCols) {
             return; // No change
