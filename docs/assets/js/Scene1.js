@@ -28,8 +28,8 @@ class Scene1 extends Phaser.Scene {
         this.wiggleTween = null;
         
         // Animation tracking
-        this.isAnimating = false; // Flag for active animations
-        this.resizePending = false;
+        this.animatingCols = new Set();
+        this.colsNeedingResize = new Set();
 
         // Background
         this.background = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, "background").setOrigin(0,0);
@@ -78,7 +78,8 @@ class Scene1 extends Phaser.Scene {
         // Ignore clicks on non-gem objects
         if (!this.gems.contains(gem)) return;
 
-        if (this.isAnimating) return;
+        // Block input if the gem's column is animating
+        if (this.animatingCols.has(gem.gridPosition.x)) return;
 
         // If a gem is already selected, stop its wiggle
         if (this.selectedGem) {
@@ -108,7 +109,16 @@ class Scene1 extends Phaser.Scene {
             // Second gem selected, attempt swap
             // The wiggle is already stopped from the check at the top
             if (this.canSwap(this.selectedGem, gem)) {
-                this.isAnimating = true; // Lock input
+                // Ensure both columns are free
+                if (this.animatingCols.has(this.selectedGem.gridPosition.x) || 
+                    this.animatingCols.has(gem.gridPosition.x)) {
+                    this.selectedGem.setScale(this.gemScale);
+                    this.selectedGem = null;
+                    return;
+                }
+
+                this.animatingCols.add(this.selectedGem.gridPosition.x);
+                this.animatingCols.add(gem.gridPosition.x);
                 this.swapGems(this.selectedGem, gem);
             } else {
                 // Invalid swap, deselect first gem
@@ -145,7 +155,11 @@ class Scene1 extends Phaser.Scene {
             y: gem1Pos.y,
             duration: 200,
             onComplete: () => {
-                // After visual swap, check for matches
+                const colsToUnlock = new Set([gem1GridPos.x, gem2GridPos.x]);
+                
+                // Unlock to allow match checking
+                colsToUnlock.forEach(col => this.animatingCols.delete(col));
+
                 // Provisionally swap in the grid data structure
                 this.grid[gem1GridPos.y][gem1GridPos.x] = gem2;
                 this.grid[gem2GridPos.y][gem2GridPos.x] = gem1;
@@ -159,6 +173,9 @@ class Scene1 extends Phaser.Scene {
                     
                     this.checkMatches();
                 } else {
+                    // Re-lock for revert animation
+                    colsToUnlock.forEach(col => this.animatingCols.add(col));
+
                     // No matches, revert the provisional swap in the grid data
                     this.grid[gem1GridPos.y][gem1GridPos.x] = gem1;
                     this.grid[gem2GridPos.y][gem2GridPos.x] = gem2;
@@ -195,10 +212,8 @@ class Scene1 extends Phaser.Scene {
                     y: gem2Pos.y,
                     duration: 200,
                     onComplete: () => {
-                        this.isAnimating = false;
-                        if (this.resizePending) {
-                            this.onResize(this.scale.gameSize);
-                        }
+                        const colsToUnlock = new Set([gem1.gridPosition.x, gem2.gridPosition.x]);
+                        colsToUnlock.forEach(col => this.setColAnimating(col, false));
                     }
                 });
             }
@@ -209,23 +224,44 @@ class Scene1 extends Phaser.Scene {
         let matches = this.getMatches();
 
         if (matches.length > 0) {
-            this.isAnimating = true;
-            this.removeMatches(matches); // Starts the disappearance animation
+            // Identify columns involved in matches
+            let affectedCols = new Set();
+            matches.forEach(gem => affectedCols.add(gem.gridPosition.x));
 
-            // Wait for the animation to finish before dropping and filling
-            this.time.delayedCall(200, () => {
-                this.dropGems();
-                this.fillNewGems();
+            // Lock all affected columns
+            affectedCols.forEach(col => this.animatingCols.add(col));
 
-                // After dropping/filling, check for new chain-reaction matches
-                this.time.delayedCall(500, this.checkMatches, [], this);
-            }, [], this);
-        } else {
-            this.isAnimating = false;
-            if (this.resizePending) {
-                this.onResize(this.scale.gameSize);
-            }
+            this.removeMatches(matches, affectedCols);
         }
+    }
+
+    removeMatches(matches, affectedCols) {
+        let count = 0;
+        matches.forEach(gem => {
+            // Set grid cell to null immediately
+            this.grid[gem.gridPosition.y][gem.gridPosition.x] = null;
+            
+            // Animate gem disappearance
+            this.tweens.add({
+                targets: gem,
+                scale: 0,
+                duration: 200,
+                onComplete: () => {
+                    gem.destroy();
+                    count++;
+                    if (count === matches.length) {
+                        // All matches removed, now drop and fill for each affected column
+                        affectedCols.forEach(col => {
+                            this.dropGemsInColumn(col, () => {
+                                this.fillNewGemsInColumn(col, () => {
+                                    this.setColAnimating(col, false);
+                                });
+                            });
+                        });
+                    }
+                }
+            });
+        });
     }
 
     getMatches() {
@@ -236,6 +272,13 @@ class Scene1 extends Phaser.Scene {
             if (!this.grid[y]) continue;
             let currentBatch = [];
             for (let x = 0; x < this.gridCols; x++) {
+                // If column is animating, treat it as a break in matches
+                if (this.animatingCols.has(x)) {
+                    if (currentBatch.length >= 3) matches = matches.concat(currentBatch);
+                    currentBatch = [];
+                    continue;
+                }
+
                 const gem = this.grid[y][x];
                 if (gem && currentBatch.length > 0 && gem.frame.name === currentBatch[0].frame.name) {
                     currentBatch.push(gem);
@@ -253,6 +296,9 @@ class Scene1 extends Phaser.Scene {
 
         // Find vertical matches
         for (let x = 0; x < this.gridCols; x++) {
+            // Skip vertical check for animating columns
+            if (this.animatingCols.has(x)) continue;
+
             let currentBatch = [];
             for (let y = 0; y < this.gridRows; y++) {
                 if (!this.grid[y]) continue;
@@ -275,66 +321,86 @@ class Scene1 extends Phaser.Scene {
         return Array.from(new Set(matches));
     }
 
-    removeMatches(matches) {
-        matches.forEach(gem => {
-            // Set grid cell to null immediately
-            this.grid[gem.gridPosition.y][gem.gridPosition.x] = null;
-            
-            // Animate gem disappearance
-            this.tweens.add({
-                targets: gem,
-                scale: 0,
-                duration: 200,
-                onComplete: () => {
-                    gem.destroy();
-                }
-            });
-        });
-    }
+    dropGemsInColumn(col, onComplete) {
+        const gemsToDrop = [];
+        // 1. Collect all existing gems in the column
+        for (let y = 0; y < this.gridRows; y++) {
+            if (this.grid[y] && this.grid[y][col]) {
+                gemsToDrop.push(this.grid[y][col]);
+                this.grid[y][col] = null; // Remove from grid temporarily
+            }
+        }
 
-    dropGems() {
-        for (let x = 0; x < this.gridCols; x++) {
-            for (let y = this.gridRows - 1; y >= 0; y--) {
-                if (this.grid[y] && this.grid[y][x] === null) {
-                    // Find the first gem above it
-                    for (let yy = y - 1; yy >= 0; yy--) {
-                        if (this.grid[yy] && this.grid[yy][x] !== null) {
-                            let gem = this.grid[yy][x];
-                            this.grid[y][x] = gem;
-                            this.grid[yy][x] = null;
-                            gem.gridPosition.y = y;
+        let drops = 0;
+        let totalToDrop = 0;
+        let currentY = this.gridRows - 1;
 
-                            // Animate drop
-                            this.tweens.add({
-                                targets: gem,
-                                y: y * this.tileHeight + this.tileHeight / 2,
-                                duration: 400,
-                                ease: "Bounce.easeOut"
-                            });
-                            break;
+        // 2. Place gems back from the bottom up
+        for (let i = gemsToDrop.length - 1; i >= 0; i--) {
+            const gem = gemsToDrop[i];
+            const targetY = currentY;
+            currentY--;
+
+            this.grid[targetY][col] = gem;
+            gem.gridPosition.y = targetY;
+
+            const targetPixelY = targetY * this.tileHeight + this.tileHeight / 2;
+
+            if (Math.abs(gem.y - targetPixelY) > 1) { // Allow small float tolerance
+                totalToDrop++;
+                this.tweens.add({
+                    targets: gem,
+                    y: targetPixelY,
+                    duration: 400,
+                    ease: "Bounce.easeOut",
+                    onComplete: () => {
+                        drops++;
+                        if (drops === totalToDrop) {
+                            if (onComplete) onComplete();
                         }
                     }
-                }
+                });
+            } else {
+                // Ensure exact position if no animation
+                gem.y = targetPixelY;
             }
+        }
+
+        if (totalToDrop === 0) {
+            if (onComplete) onComplete();
         }
     }
 
-    fillNewGems() {
-        for (let x = 0; x < this.gridCols; x++) {
-            for (let y = 0; y < this.gridRows; y++) {
-                if (this.grid[y] && this.grid[y][x] === null) {
-                    let newGem = this.addGem(x, y);
-                    newGem.y = -this.tileHeight; // Start above the grid
+    fillNewGemsInColumn(col, onComplete) {
+        // If this column is flagged for resize, skip filling now.
+        // The processColumn -> resizeColumn loop will handle the Restack & Fill.
+        if (this.colsNeedingResize.has(col)) {
+            if (onComplete) onComplete();
+            return;
+        }
 
-                    this.tweens.add({
-                        targets: newGem,
-                        y: y * this.tileHeight + this.tileHeight / 2,
-                        duration: 400,
-                        ease: "Bounce.easeOut"
-                    });
-                }
+        let fills = 0;
+        let totalToFill = 0;
+
+        for (let y = 0; y < this.gridRows; y++) {
+            if (this.grid[y] && this.grid[y][col] === null) {
+                totalToFill++;
+                let newGem = this.addGem(col, y);
+                newGem.y = -this.tileHeight * (totalToFill); // Stagger entry
+
+                this.tweens.add({
+                    targets: newGem,
+                    y: y * this.tileHeight + this.tileHeight / 2,
+                    duration: 400,
+                    ease: "Bounce.easeOut",
+                    onComplete: () => {
+                        fills++;
+                        if (fills === totalToFill) onComplete();
+                    }
+                });
             }
         }
+        if (totalToFill === 0) onComplete();
     }
 
     onResize(gameSize) {
@@ -343,16 +409,10 @@ class Scene1 extends Phaser.Scene {
             this.background.setSize(gameSize.width, gameSize.height);
         }
 
-        if (this.isAnimating) {
-            this.resizePending = true;
-            return;
-        }
         this.handleResize(gameSize);
     }
 
     handleResize(gameSize) {
-        this.resizePending = false;
-
         if (this.selectedGem) {
             if (this.wiggleTween) this.wiggleTween.complete();
             this.selectedGem.setScale(this.gemScale);
@@ -368,32 +428,32 @@ class Scene1 extends Phaser.Scene {
             return; // No change
         }
 
-        // Removals first
+        // 1. Handle horizontal changes (columns)
         if (newCols < oldCols) {
-            this.removeCols(newCols, oldCols, oldRows);
+            this.removeCols(newCols, oldCols, Math.max(oldRows, newRows));
         }
-        if (newRows < oldRows) {
-            this.removeRows(newRows, oldRows, newCols);
-        }
-
-        this.gridRows = newRows;
-        this.gridCols = newCols;
         
-        // Additions
-        if (newCols > oldCols) {
-            this.addCols(oldCols, newCols, oldRows);
-        }
-        if (newRows > oldRows) {
-            this.addRows(oldRows, newRows, newCols);
+        this.gridCols = newCols;
+        this.gridRows = newRows;
+
+        // 2. Ensure row arrays exist for newRows
+        if (this.grid.length < newRows) {
+            for (let y = this.grid.length; y < newRows; y++) {
+                this.grid[y] = new Array(newCols).fill(null);
+            }
         }
 
-        if (newCols > oldCols || newRows > oldRows) {
-            this.isAnimating = true;
-            this.dropGems();
-            this.fillNewGems();
-            this.time.delayedCall(500, () => this.checkMatches(), [], this);
-        } else {
-            this.time.delayedCall(200, () => this.checkMatches(), [], this);
+        if (newCols > oldCols) {
+            this.addCols(oldCols, newCols, newRows);
+        }
+
+        // 3. Trigger per-column resize
+        for (let x = 0; x < this.gridCols; x++) {
+            if (this.animatingCols.has(x)) {
+                this.colsNeedingResize.add(x);
+            } else {
+                this.resizeColumn(x);
+            }
         }
     }
 
@@ -422,40 +482,14 @@ class Scene1 extends Phaser.Scene {
         }
     }
 
-    addRows(from, to, numCols) {
-        for (let y = from; y < to; y++) {
-            this.grid[y] = [];
-            for (let x = 0; x < numCols; x++) {
-                this.grid[y][x] = null;
-            }
-        }
-    }
-
-    removeRows(newRows, oldRows, numCols) {
-        for (let y = newRows; y < oldRows; y++) {
-            if (this.grid[y]) {
-                for (let x = 0; x < numCols; x++) {
-                    if (this.grid[y][x]) {
-                        this.grid[y][x].destroy();
-                    }
-                }
-            }
-        }
-        this.grid.length = newRows;
-    }
-
 
     handlePointerDown(pointer) {
-        if (this.isAnimating) return; // Prevent new swipes during animation
-
         this.swipeStartX = pointer.x;
         this.swipeStartY = pointer.y;
         this.swipeStartTime = pointer.time;
     }
 
     handlePointerUp(pointer) {
-        if (this.isAnimating) return; // Ignore if game is animating
-
         const swipeTime = pointer.time - this.swipeStartTime;
         if (swipeTime < this.swipeMinTime || swipeTime > this.swipeMaxTime) {
             return; // Not a swipe (too fast or too slow)
@@ -489,9 +523,13 @@ class Scene1 extends Phaser.Scene {
             return; // No gem at the swipe start position
         }
 
+        if (this.animatingCols.has(startGridX)) return;
+
         const neighborGem = this.getNeighbor(swipedGem, swipeDirection);
 
         if (swipedGem && neighborGem) {
+            if (this.animatingCols.has(neighborGem.gridPosition.x)) return;
+
             // Deselect any currently selected gem to avoid conflicts with swipe
             if(this.selectedGem) {
                 if (this.wiggleTween) this.wiggleTween.stop();
@@ -502,7 +540,8 @@ class Scene1 extends Phaser.Scene {
 
             // Attempt to swap the gems if it's a valid move
             if (this.canSwap(swipedGem, neighborGem)) {
-                this.isAnimating = true; // Lock input during animation
+                this.animatingCols.add(swipedGem.gridPosition.x);
+                this.animatingCols.add(neighborGem.gridPosition.x);
                 this.swapGems(swipedGem, neighborGem);
             }
         }
@@ -547,6 +586,79 @@ class Scene1 extends Phaser.Scene {
 
         return null; // No valid neighbor found
     }
+
+    setColAnimating(col, animating) {
+        if (animating) {
+            this.animatingCols.add(col);
+        } else {
+            this.animatingCols.delete(col);
+            this.processColumn(col);
+        }
+    }
+
+    processColumn(col) {
+        // 1. Check if resize is pending for this column
+        if (this.colsNeedingResize.has(col)) {
+            this.colsNeedingResize.delete(col);
+            // Apply resize logic for this column (vertical)
+            // Note: If gridRows changed, we might need to add/remove gems
+            this.resizeColumn(col);
+            return;
+        }
+
+        // 2. Check for matches involving this column (and neighbors)
+        // Since we don't track which column triggered the check easily, 
+        // we can run a check that filters for stable columns.
+        // Or simpler: Just run checkMatches(), it should ignore unstable cols.
+        this.checkMatches();
+    }
+
+    resizeColumn(col) {
+        // Only handle vertical resize (adding/removing rows) per column
+        // If gridCols changed, that's handled in handleResize mainly.
+        
+        // We assume this.gridRows is the *new* target height.
+        // Current gems in this column might be more or fewer.
+        
+        // 1. Identify current gems in this column
+        let currentGems = [];
+        for(let y=0; y < this.grid.length; y++) { // Use actual grid length
+            if (this.grid[y] && this.grid[y][col]) {
+                currentGems.push(this.grid[y][col]);
+            }
+        }
+
+        // 2. If we have too many gems (gridRows < current), remove top ones? 
+        // Or remove bottom? Usually resize cuts from bottom or top.
+        // Let's assume we match the gridRows.
+        
+        // Actually, dropGems and fillNewGems rely on grid[y][x].
+        // If we just ensure the grid slots exist (which we did in handleResize), 
+        // we can just call dropGemsInColumn and fillNewGemsInColumn.
+        
+        // If we shrunk, handleResize might have already destroyed gems?
+        // No, handleResize deferred destruction for animating columns.
+        
+        // So:
+        // Ensure grid structure is correct for this col?
+        // handleResize already updated gridRows global and grid structure (mostly).
+        // If we need to remove gems that are now "out of bounds":
+        for (let y = this.gridRows; y < this.grid.length; y++) {
+            if (this.grid[y] && this.grid[y][col]) {
+                this.grid[y][col].destroy();
+                this.grid[y][col] = null;
+            }
+        }
+        
+        // Now fill/drop
+        this.setColAnimating(col, true);
+        this.dropGemsInColumn(col, () => {
+            this.fillNewGemsInColumn(col, () => {
+                this.setColAnimating(col, false);
+            });
+        });
+    }
+
 
 }
 

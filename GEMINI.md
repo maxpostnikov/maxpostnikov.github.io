@@ -1,6 +1,14 @@
 # Project Overview
 
-This is a web-based Match-3 game built using the Phaser 3 game engine. The main game logic is contained in `assets/js/Scene1.js` and handles the game grid, gem swapping, match detection, and the main game loop.
+This is a web-based Match-3 game built using the Phaser 3 game engine. The project is hosted on GitHub Pages, with the source code located in the `docs/` directory. The main game logic is contained in `docs/assets/js/Scene1.js` and handles the game grid, gem swapping, match detection, and the main game loop.
+
+## Project Structure
+
+*   `docs/index.html`: The main entry point of the game.
+*   `docs/assets/js/game.js`: Initializes the Phaser game and the main scene.
+*   `docs/assets/js/Scene1.js`: Contains the core gameplay logic for the Match-3 game.
+*   `docs/assets/images/`: Contains all the image assets for the game.
+*   `eslint.config.js`: ESLint configuration file (at project root).
 
 ## Running the Project
 
@@ -13,28 +21,24 @@ To run this project, you need a local web server. You can use Python's built-in 
     python3 -m http.server
     ```
 
-3.  Open your web browser and navigate to `http://localhost:8000`.
+3.  Open your web browser and navigate to `http://localhost:8000/docs/`.
 
 ## Development Conventions
 
-The project follows a simple structure with JavaScript modules.
-
-*   `index.html`: The main entry point of the game.
-*   `assets/js/game.js`: Initializes the Phaser game and the main scene.
-*   `assets/js/Scene1.js`: Contains the core gameplay logic for the Match-3 game.
-*   `assets/images/`: Contains all the image assets for the game.
+*   **Modules:** The project uses JavaScript ES modules (`type="module"` in `package.json` and `<script type="module">` in `index.html`).
+*   **Linting:** Code quality is maintained using ESLint.
 
 ## Linting
 
-This project uses [ESLint](https://eslint.org/) for maintaining code quality and consistency. ESLint analyzes your code for potential errors, stylistic issues, and adherence to best practices.
+This project uses [ESLint](https://eslint.org/) for maintaining code quality and consistency.
 
 **Configuration:**
-ESLint is configured via `eslint.config.js` at the project root. This file defines the rules and environment for linting.
+ESLint is configured via `eslint.config.js` at the project root.
 
 **Running the Linter:**
-You can run ESLint to check and automatically fix issues in your JavaScript files using the following command:
+You can run ESLint to check and automatically fix issues in your JavaScript files using the following command from the project root:
 
 ```bash
-npm exec eslint assets/js/Scene1.js -- --fix
+npm exec eslint docs/assets/js/Scene1.js -- --fix
 ```
-Replace `assets/js/Scene1.js` with the path to the file you wish to lint, or omit it to lint all configured JavaScript files.
+Replace `docs/assets/js/Scene1.js` with the path to the file you wish to lint, or omit it to lint all configured JavaScript files.
