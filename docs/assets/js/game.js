@@ -1,4 +1,5 @@
 import Scene1 from "./Scene1.js";
+import WavePipeline from "./WavePipeline.js";
 
 const config = {
     type: Phaser.AUTO,
@@ -8,6 +9,7 @@ const config = {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
+    pipeline: { 'WavePipeline': WavePipeline },
     scene: [Scene1]
 };
 

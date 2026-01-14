@@ -59,6 +59,8 @@ class Scene1 extends Phaser.Scene {
         this.input.on("pointerdown", this.handlePointerDown, this);
         this.input.on("pointerup", this.handlePointerUp, this);
 
+        // Enable custom wave shader
+        this.cameras.main.setPostPipeline('WavePipeline');
 
         // Initial check for matches to ensure a valid starting board
         this.time.delayedCall(500, this.checkMatches, [], this);
