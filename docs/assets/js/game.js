@@ -9,7 +9,6 @@ const config = {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    canvasContext: { willReadFrequently: true },
     pipeline: { 'WavePipeline': WavePipeline },
     scene: [Scene1]
 };

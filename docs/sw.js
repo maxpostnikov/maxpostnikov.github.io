@@ -11,7 +11,7 @@ const ASSETS_TO_CACHE = [
   './assets/js/WavePipeline.js',
   './assets/images/background.png',
   './assets/images/gems.png',
-  'https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js'
+  'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js'
 ];
 
 self.addEventListener('install', (event) => {
