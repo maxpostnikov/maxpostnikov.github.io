@@ -5,8 +5,11 @@ This is a web-based Match-3 game built using the Phaser 3 game engine. The proje
 ## Project Structure
 
 *   `docs/index.html`: The main entry point of the game.
+*   `docs/manifest.json`: Web app manifest for PWA support.
+*   `docs/sw.js`: Service worker for offline caching and PWA support.
 *   `docs/assets/js/game.js`: Initializes the Phaser game and the main scene.
 *   `docs/assets/js/Scene1.js`: Contains the core gameplay logic for the Match-3 game.
+*   `docs/assets/js/WavePipeline.js`: Custom Phaser PostFX Pipeline for a glare effect.
 *   `docs/assets/images/`: Contains all the image assets for the game.
 *   `eslint.config.js`: ESLint configuration file (at project root).
 
@@ -42,3 +45,6 @@ You can run ESLint to check and automatically fix issues in your JavaScript file
 npm exec eslint docs/assets/js/Scene1.js -- --fix
 ```
 Replace `docs/assets/js/Scene1.js` with the path to the file you wish to lint, or omit it to lint all configured JavaScript files.
+
+## Gemini Added Memories
+- The user prefers code change descriptions to be provided before the tool calls so they can be read during the approval process.
