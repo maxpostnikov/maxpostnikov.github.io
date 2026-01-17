@@ -1,5 +1,6 @@
 import Scene1 from "./Scene1.js";
 import WavePipeline from "./WavePipeline.js";
+import ExplosionPipeline from "./ExplosionPipeline.js";
 
 const config = {
     type: Phaser.AUTO,
@@ -9,7 +10,10 @@ const config = {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
-    pipeline: { 'WavePipeline': WavePipeline },
+    pipeline: { 
+        'WavePipeline': WavePipeline,
+        'ExplosionPipeline': ExplosionPipeline
+    },
     scene: [Scene1]
 };
 

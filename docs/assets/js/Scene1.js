@@ -60,23 +60,44 @@ class Scene1 extends Phaser.Scene {
         this.input.on("pointerup", this.handlePointerUp, this);
 
         // Enable custom wave shader
-        this.cameras.main.setPostPipeline('WavePipeline');
-
+        this.cameras.main.setPostPipeline("WavePipeline");
+        this.cameras.main.setPostPipeline("ExplosionPipeline");
+        
         // Initial check for matches to ensure a valid starting board
         this.time.delayedCall(500, this.checkMatches, [], this);
     }
 
-    addGem(x, y) {
-        let gem = this.gems.create(x * this.tileWidth + this.tileWidth / 2, y * this.tileHeight + this.tileHeight / 2, "gems", Phaser.Math.Between(0, 5));
+    addGem(x, y, isBomb = false, onComplete = null) {
+        let gem;
+        if (isBomb) {
+            gem = this.gems.create(x * this.tileWidth + this.tileWidth / 2, y * this.tileHeight + this.tileHeight / 2, "gems", 6);
+            gem.isBomb = true;
+
+            // Pop-in animation for bombs
+            gem.setScale(0);
+            this.tweens.add({
+                targets: gem,
+                scale: this.gemScale,
+                duration: 400,
+                ease: "Back.out",
+                onComplete: () => {
+                    if (onComplete) onComplete();
+                }
+            });
+        } else {
+            gem = this.gems.create(x * this.tileWidth + this.tileWidth / 2, y * this.tileHeight + this.tileHeight / 2, "gems", Phaser.Math.Between(0, 5));
+            gem.isBomb = false;
+            gem.setScale(this.gemScale);
+            if (onComplete) onComplete();
+        }
         gem.setInteractive();
-        gem.setScale(this.gemScale);
         gem.gridPosition = new Phaser.Geom.Point(x, y);
         this.grid[y][x] = gem;
         // The listener is now on the scene, not the individual gem
         return gem;
     }
 
-    handleGemClick(pointer, gem) {
+    handleGemClick(_, gem) {
         // Ignore clicks on non-gem objects
         if (!this.gems.contains(gem)) return;
 
@@ -222,28 +243,210 @@ class Scene1 extends Phaser.Scene {
         });
     }
 
+    isValid(x, y) {
+        return x >= 0 && x < this.gridCols && y >= 0 && y < this.gridRows;
+    }
+    
     checkMatches() {
-        let matches = this.getMatches();
-
-        if (matches.length > 0) {
-            // Identify columns involved in matches
+        let groups = this.getMatches();
+    
+        if (groups.length > 0) {
             let affectedCols = new Set();
-            matches.forEach(gem => affectedCols.add(gem.gridPosition.x));
-
-            // Lock all affected columns
+                
+            groups.forEach(group => {
+                group.forEach(gem => {
+                    affectedCols.add(gem.gridPosition.x);
+                });
+            });
+    
+            // Lock all initially affected columns
             affectedCols.forEach(col => this.animatingCols.add(col));
-
-            this.removeMatches(matches, affectedCols);
+    
+            this.removeMatches(groups, affectedCols);
         }
     }
+    
+    removeMatches(groups, affectedCols) {
+        let allGemsToRemove = new Set();
+        let gemsToAnimateOnly = new Set();
+        let bombOrigins = [];
+        let bombsToSpawn = [];
+    
+        // 1. Initial Processing
+        groups.forEach(group => {
+            group.forEach(gem => allGemsToRemove.add(gem));
+            if (group.length >= 4) {
+                bombsToSpawn.push({ x: group[0].gridPosition.x, y: group[0].gridPosition.y });
+            }
+        });
+    
+        // 2. Recursive Bomb Logic
+        let gemsToCheck = Array.from(allGemsToRemove);
+        let checkedGems = new Set();
+    
+        while (gemsToCheck.length > 0) {
+            let gem = gemsToCheck.pop();
+            if (checkedGems.has(gem)) continue;
+            checkedGems.add(gem);
+    
+            if (gem.isBomb) {
+                bombOrigins.push(gem);
+                this.processBombArea(gem, allGemsToRemove, gemsToAnimateOnly, gemsToCheck, affectedCols);
+            }
+        }
+    
+        // 3. Execute
+        if (bombOrigins.length > 0) {
+            this.animateShockwave(bombOrigins, gemsToAnimateOnly, allGemsToRemove, () => {
+                this.finalizeRemoval(allGemsToRemove, bombsToSpawn, affectedCols);
+            });
+        } else {
+            this.finalizeRemoval(allGemsToRemove, bombsToSpawn, affectedCols);
+        }
+    }
+    
+    processBombArea(bomb, allGemsToRemove, gemsToAnimateOnly, gemsToCheck, affectedCols) {
+        const { x, y } = bomb.gridPosition;
+        const radiusRemove = 1;
+        const radiusAnim = 4;    
+        for (let dy = -radiusAnim; dy <= radiusAnim; dy++) {
+            for (let dx = -radiusAnim; dx <= radiusAnim; dx++) {
+                if (dx === 0 && dy === 0) continue;
+    
+                let nx = x + dx;
+                let ny = y + dy;
+    
+                if (this.isValid(nx, ny)) {
+                    let target = this.grid[ny][nx];
+                    if (!target) continue;
+    
+                    let dist = Math.max(Math.abs(dx), Math.abs(dy));
+    
+                    // Lock column for any affected gem
+                    if (!affectedCols.has(nx)) {
+                        affectedCols.add(nx);
+                        this.animatingCols.add(nx);
+                    }
+    
+                    if (dist <= radiusRemove) {
+                        if (!allGemsToRemove.has(target)) {
+                            allGemsToRemove.add(target);
+                            gemsToCheck.push(target);
+                            // If it was marked for animation only, upgrade it to removal
+                            if (gemsToAnimateOnly.has(target)) gemsToAnimateOnly.delete(target);
+                        }
+                    } else {
+                        // Radius 4-5: Animate only
+                        if (!allGemsToRemove.has(target) && !gemsToAnimateOnly.has(target)) {
+                            gemsToAnimateOnly.add(target);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    animateShockwave(bombOrigins, gemsToAnimateOnly, allGemsToRemove, onComplete) {
+        // Trigger Explosion Shader
+        if (bombOrigins.length > 0) {
+            const pipeline = this.cameras.main.getPostPipeline("ExplosionPipeline");
+            
+            if (pipeline) {
+                // Use the first bomb as the center for the shockwave
+                const bomb = bombOrigins[0];
+                pipeline.set2f("uCenter", bomb.x, bomb.y);
+                pipeline.set1f("uActive", 1.0); // Activate shader
+                
+                // Stop previous shader tween if active
+                if (this.explosionShaderTween) {
+                    this.explosionShaderTween.stop();
+                }
 
-    removeMatches(matches, affectedCols) {
+                // Tween the shader time uniform
+                let shaderData = { time: 0.0 };
+                this.explosionShaderTween = this.tweens.add({
+                    targets: shaderData,
+                    time: 1.0,
+                    duration: 600, 
+                    onUpdate: () => {
+                        pipeline.set1f("uTime", shaderData.time);
+                    },
+                    onComplete: () => {
+                        pipeline.set1f("uActive", 0.0); // Deactivate shader
+                        this.explosionShaderTween = null;
+                    }
+                });
+            }
+        }
+
+        let offsets = new Map();
+            
+        // Combine sets for animation calculation
+        let allAnimatedGems = new Set([...gemsToAnimateOnly, ...allGemsToRemove]);
+    
+        // Calculate forces
+        allAnimatedGems.forEach(gem => {
+            let totalDx = 0;
+            let totalDy = 0;
+    
+            bombOrigins.forEach(bomb => {
+                let dx = gem.gridPosition.x - bomb.gridPosition.x;
+                let dy = gem.gridPosition.y - bomb.gridPosition.y;
+                let dist = Math.max(Math.abs(dx), Math.abs(dy));
+                    
+                // Only affect gems within radius of THIS bomb
+                if (dist <= 4 && dist > 0) {
+                    // Euclidean length for direction normalization
+                    let len = Math.sqrt(dx * dx + dy * dy);
+                        
+                    // Exponential force: base^ (max_dist - dist)
+                    // Ring 1: 2.5^4 * 2 = ~78px
+                    // Ring 4: 2.5^1 * 2 = ~5px
+                    let force = Math.pow(2.5, 5 - dist) * 2;
+                        
+                    totalDx += (dx / len) * force;
+                    totalDy += (dy / len) * force;
+                }
+            });
+    
+            if (Math.abs(totalDx) > 0.1 || Math.abs(totalDy) > 0.1) {
+                offsets.set(gem, { x: totalDx, y: totalDy });
+            }
+        });
+    
+        // Apply tweens
+        if (offsets.size === 0) {
+            if (onComplete) onComplete();
+            return;
+        }
+    
+        let completed = 0;
+        offsets.forEach((offset, gem) => {
+            this.tweens.add({
+                targets: gem,
+                x: gem.x + offset.x,
+                y: gem.y + offset.y,
+                duration: 100,
+                yoyo: true,
+                ease: "Cubic.easeOut",
+                onComplete: () => {
+                    completed++;
+                    if (completed === offsets.size) {
+                        if (onComplete) onComplete();
+                    }
+                }
+            });
+        });
+    }
+    
+    finalizeRemoval(allGemsToRemove, bombsToSpawn, affectedCols) {
+        const gemsArray = Array.from(allGemsToRemove);
         let count = 0;
-        matches.forEach(gem => {
+            
+        gemsArray.forEach(gem => {
             // Set grid cell to null immediately
             this.grid[gem.gridPosition.y][gem.gridPosition.x] = null;
-            
-            // Animate gem disappearance
+                
             this.tweens.add({
                 targets: gem,
                 scale: 0,
@@ -251,12 +454,34 @@ class Scene1 extends Phaser.Scene {
                 onComplete: () => {
                     gem.destroy();
                     count++;
-                    if (count === matches.length) {
-                        // All matches removed, now drop and fill for each affected column
+                    if (count === gemsArray.length) {
+                        // Prepare synchronization
+                        let colWaitCount = new Map();
+                        affectedCols.forEach(col => colWaitCount.set(col, 1));
+    
+                        const checkUnlock = (col) => {
+                            let c = colWaitCount.get(col) - 1;
+                            colWaitCount.set(col, c);
+                            if (c === 0) {
+                                this.setColAnimating(col, false);
+                            }
+                        };
+    
+                        // Spawn new bombs
+                        bombsToSpawn.forEach(pos => {
+                            if (this.grid[pos.y][pos.x] === null) {
+                                colWaitCount.set(pos.x, colWaitCount.get(pos.x) + 1);
+                                this.addGem(pos.x, pos.y, true, () => {
+                                    checkUnlock(pos.x);
+                                });
+                            }
+                        });
+    
+                        // Drop and Fill
                         affectedCols.forEach(col => {
                             this.dropGemsInColumn(col, () => {
                                 this.fillNewGemsInColumn(col, () => {
-                                    this.setColAnimating(col, false);
+                                    checkUnlock(col);
                                 });
                             });
                         });
@@ -265,62 +490,61 @@ class Scene1 extends Phaser.Scene {
             });
         });
     }
-
     getMatches() {
-        let matches = [];
+        let matchGroups = [];
+
+        // Helper to check a line (row or column) for matches
+        const findMatchesInLine = (line) => {
+            let i = 0;
+            while (i < line.length) {
+                let currentBatch = [];
+                let batchColor = null;
+
+                for (let j = i; j < line.length; j++) {
+                    const gem = line[j];
+                    if (!gem || this.animatingCols.has(gem.gridPosition.x)) {
+                        break;
+                    }
+
+                    if (gem.isBomb) {
+                        currentBatch.push(gem);
+                    } else {
+                        if (batchColor === null) {
+                            batchColor = gem.frame.name;
+                            currentBatch.push(gem);
+                        } else if (gem.frame.name === batchColor) {
+                            currentBatch.push(gem);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                if (currentBatch.length >= 3) {
+                    matchGroups.push(currentBatch);
+                    i += currentBatch.length;
+                } else {
+                    i++;
+                }
+            }
+        };
 
         // Find horizontal matches
         for (let y = 0; y < this.gridRows; y++) {
-            if (!this.grid[y]) continue;
-            let currentBatch = [];
-            for (let x = 0; x < this.gridCols; x++) {
-                // If column is animating, treat it as a break in matches
-                if (this.animatingCols.has(x)) {
-                    if (currentBatch.length >= 3) matches = matches.concat(currentBatch);
-                    currentBatch = [];
-                    continue;
-                }
-
-                const gem = this.grid[y][x];
-                if (gem && currentBatch.length > 0 && gem.frame.name === currentBatch[0].frame.name) {
-                    currentBatch.push(gem);
-                } else {
-                    if (currentBatch.length >= 3) {
-                        matches = matches.concat(currentBatch);
-                    }
-                    currentBatch = gem ? [gem] : [];
-                }
-            }
-            if (currentBatch.length >= 3) {
-                matches = matches.concat(currentBatch);
-            }
+            if (this.grid[y]) findMatchesInLine(this.grid[y]);
         }
 
         // Find vertical matches
         for (let x = 0; x < this.gridCols; x++) {
-            // Skip vertical check for animating columns
             if (this.animatingCols.has(x)) continue;
-
-            let currentBatch = [];
+            let column = [];
             for (let y = 0; y < this.gridRows; y++) {
-                if (!this.grid[y]) continue;
-                const gem = this.grid[y][x];
-                if (gem && currentBatch.length > 0 && gem.frame.name === currentBatch[0].frame.name) {
-                    currentBatch.push(gem);
-                } else {
-                    if (currentBatch.length >= 3) {
-                        matches = matches.concat(currentBatch);
-                    }
-                    currentBatch = gem ? [gem] : [];
-                }
+                column.push(this.grid[y] ? this.grid[y][x] : null);
             }
-            if (currentBatch.length >= 3) {
-                matches = matches.concat(currentBatch);
-            }
+            findMatchesInLine(column);
         }
 
-        // Remove duplicates from matches array
-        return Array.from(new Set(matches));
+        return matchGroups;
     }
 
     dropGemsInColumn(col, onComplete) {
@@ -622,23 +846,7 @@ class Scene1 extends Phaser.Scene {
         // We assume this.gridRows is the *new* target height.
         // Current gems in this column might be more or fewer.
         
-        // 1. Identify current gems in this column
-        let currentGems = [];
-        for(let y=0; y < this.grid.length; y++) { // Use actual grid length
-            if (this.grid[y] && this.grid[y][col]) {
-                currentGems.push(this.grid[y][col]);
-            }
-        }
-
-        // 2. If we have too many gems (gridRows < current), remove top ones? 
-        // Or remove bottom? Usually resize cuts from bottom or top.
-        // Let's assume we match the gridRows.
-        
-        // Actually, dropGems and fillNewGems rely on grid[y][x].
-        // If we just ensure the grid slots exist (which we did in handleResize), 
-        // we can just call dropGemsInColumn and fillNewGemsInColumn.
-        
-        // If we shrunk, handleResize might have already destroyed gems?
+        // 1. If we shrunk, handleResize might have already destroyed gems?
         // No, handleResize deferred destruction for animating columns.
         
         // So:
