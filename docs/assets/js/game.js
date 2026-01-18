@@ -8,7 +8,7 @@ const config = {
     height: '100%',
     scale: {
         mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        autoCenter: Phaser.Scale.NO_CENTER
     },
     pipeline: { 
         'WavePipeline': WavePipeline,
