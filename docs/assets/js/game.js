@@ -18,3 +18,11 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// Android Chrome specific fix for orientation/resize issues
+// This avoids regressions on iOS (iPad) which handles resizing natively
+if (game.device.os.android) {
+    window.addEventListener('resize', () => {
+        game.scale.resize(window.innerWidth, window.innerHeight);
+    });
+}
