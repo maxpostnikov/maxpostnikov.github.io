@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match3-v2';
+const CACHE_NAME = 'match3-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,8 +8,22 @@ const ASSETS_TO_CACHE = [
   './assets/images/icon-512.png',
   './assets/js/game.js',
   './assets/js/Scene1.js',
-  './assets/js/WavePipeline.js',
-  './assets/js/ExplosionPipeline.js',
+  './assets/js/effects/EffectRegistry.js',
+  './assets/js/model/BoardModel.js',
+  './assets/js/model/BoardEventColumns.js',
+  './assets/js/model/ColumnLockManager.js',
+  './assets/js/model/MatchAnalyzer.js',
+  './assets/js/model/NormalTile.js',
+  './assets/js/model/ResolutionEngine.js',
+  './assets/js/model/SpecialTileRegistry.js',
+  './assets/js/model/Tile.js',
+  './assets/js/pipelines/ExplosionPipeline.js',
+  './assets/js/pipelines/WavePipeline.js',
+  './assets/js/specials/bomb/BombCreationRule.js',
+  './assets/js/specials/bomb/BombExplosionEffect.js',
+  './assets/js/specials/bomb/BombTile.js',
+  './assets/js/specials/bomb/registerBombPlugin.js',
+  './assets/js/view/PhaserBoardView.js',
   './assets/images/background.png',
   './assets/images/gems.png',
   'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js'

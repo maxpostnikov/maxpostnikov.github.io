@@ -1,7 +1,7 @@
 /**
  * WavePipeline
  * 
- * A custom Phaser PostFX Pipeline that creates a diagonal "glare" or "sheen" effect 
+ * A custom Phaser PostFX pipeline that creates a diagonal "glare" or "sheen" effect
  * passing across the game screen.
  * 
  * Key Features:

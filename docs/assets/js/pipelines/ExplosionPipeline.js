@@ -1,7 +1,7 @@
 export default class ExplosionPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
     constructor(game) {
         super({
-            game: game,
+            game,
             name: "ExplosionPipeline",
             fragShader: `
                 precision mediump float;
