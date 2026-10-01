@@ -9,7 +9,8 @@
  * - Constant physical width (in pixels) regardless of window size.
  * - Constant physical speed (pixels/sec) regardless of window size.
  * - Robust against window resizing (uses absolute time-based positioning).
- * - "Smart" glare that highlights bright objects (gems) while ignoring the dark background.
+ * - Subtle sheen on colorful gems, excluding the muted background.
+ * - Softens the brightest reflections while preserving glass detail.
  */
 export default class WavePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipeline {
     constructor(game) {
@@ -40,6 +41,19 @@ export default class WavePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFX
                     
                     vec4 color = texture2D(uMainSampler, uv);
 
+                    // Saturation separates colorful pieces from the muted background.
+                    float brightest = max(color.r, max(color.g, color.b));
+                    float darkest = min(color.r, min(color.g, color.b));
+                    float saturation = (brightest - darkest) / max(brightest, 0.001);
+                    float gemMask = smoothstep(0.58, 0.7, saturation);
+
+                    // The sprites already contain the desired colors and saturation.
+                    float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+
+                    // Soften the brightest glass reflections while retaining their detail.
+                    float highlight = smoothstep(0.65, 0.95, luminance);
+                    color.rgb *= 1.0 - 0.10 * highlight;
+
                     if (uActive > 0.5) {
                         // --- Wave Shape Calculation ---
                         // Calculate distance from the current pixel's diagonal value to the wave center.
@@ -50,30 +64,11 @@ export default class WavePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFX
                         
                         if (dist < width) {
                             // Calculate base intensity: 1.0 at center, fading to 0.0 at edges.
-                            float intensity = smoothstep(width, 0.0, dist);
+                            float intensity = 1.0 - smoothstep(0.0, width, dist);
                             
-                            // --- Smart Glare Logic ---
-                            // Calculate the brightness (luminance) of the underlying pixel.
-                            // Standard rec.601 luma coefficients.
-                            float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-                            
-                            // Create a background mask.
-                            // We only want the glare to appear on brighter objects (gems).
-                            // smoothstep(0.4, 0.7, luminance) means:
-                            // - Luminance < 0.4: Mask is 0 (No glare on dark background)
-                            // - Luminance > 0.7: Mask is 1 (Full glare on bright spots)
-                            // - In between: Smooth transition
-                            float bgMask = smoothstep(0.4, 0.7, luminance);
-                            
-                            // Combine all factors:
-                            // - Pure White (vec3(1.0))
-                            // - Wave Shape (intensity)
-                            // - Underlying Brightness (luminance) - makes glare look "integrated"
-                            // - Background Mask (bgMask) - prevents washing out the background
-                            // - Global Multiplier (0.3) - controls overall brightness
-                            vec3 glare = vec3(1.0, 1.0, 1.0) * intensity * luminance * bgMask * 0.3;
-                            
-                            // Additive blending for the glare effect
+                            // Blend gently toward white without clipping existing highlights.
+                            vec3 glare = (vec3(1.0) - color.rgb) * intensity * gemMask * 0.18;
+
                             color.rgb += glare;
                         }
                     }

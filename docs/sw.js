@@ -1,11 +1,13 @@
-const CACHE_NAME = 'match3-v5';
+const CACHE_NAME = 'match3-v31';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './assets/images/icon.svg',
-  './assets/images/icon-192.png',
-  './assets/images/icon-512.png',
+  './assets/images/icon.svg?v=31',
+  './assets/images/icon-32.png?v=31',
+  './assets/images/icon-180.png?v=31',
+  './assets/images/icon-192.png?v=31',
+  './assets/images/icon-512.png?v=31',
   './assets/js/game.js',
   './assets/js/Scene1.js',
   './assets/js/effects/EffectRegistry.js',

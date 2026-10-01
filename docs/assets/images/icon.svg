@@ -1,11 +1,56 @@
-<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Sapphire gem</title>
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#ff00cc;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#3333ff;stop-opacity:1" />
+    <linearGradient id="body" x1="130" y1="115" x2="374" y2="406" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#15ceff"/>
+      <stop offset=".45" stop-color="#087eff"/>
+      <stop offset="1" stop-color="#0635bb"/>
+    </linearGradient>
+    <linearGradient id="top" x1="254" y1="77" x2="384" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9cf4ff"/>
+      <stop offset=".35" stop-color="#23c8ff"/>
+      <stop offset="1" stop-color="#057eea"/>
+    </linearGradient>
+    <linearGradient id="left" x1="109" y1="135" x2="195" y2="255" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2ae7ff"/>
+      <stop offset=".5" stop-color="#00b5f8"/>
+      <stop offset="1" stop-color="#0870e4"/>
+    </linearGradient>
+    <linearGradient id="right" x1="389" y1="234" x2="298" y2="424" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#027aeb"/>
+      <stop offset=".55" stop-color="#073fcf"/>
+      <stop offset="1" stop-color="#1498ff"/>
+    </linearGradient>
+    <linearGradient id="bottom" x1="85" y1="269" x2="256" y2="433" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0062c9"/>
+      <stop offset=".45" stop-color="#0350ce"/>
+      <stop offset="1" stop-color="#158fff"/>
+    </linearGradient>
+    <linearGradient id="face" x1="183" y1="163" x2="333" y2="356" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#19caff"/>
+      <stop offset=".5" stop-color="#078eff"/>
+      <stop offset="1" stop-color="#0650d8"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="130" y1="192" x2="218" y2="112" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#b8f6ff"/>
+      <stop offset=".6" stop-color="#fff"/>
+      <stop offset="1" stop-color="#e1fbff"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="15%" fill="#222"/>
-  <path d="M256 50 L450 256 L256 462 L62 256 Z" fill="url(#grad1)" />
-  <path d="M256 50 L350 256 L256 462 L162 256 Z" fill="rgba(255,255,255,0.2)" />
+  <rect width="512" height="512" fill="#fff"/>
+  <path d="M270 83 429 242Q442 256 429 270L270 429Q256 442 242 429L83 270Q70 256 83 242L242 83Q256 70 270 83Z" fill="url(#body)"/>
+  <path d="M256 77Q263 76 270 83L429 242Q435 248 436 256L380 256 256 132Z" fill="url(#top)"/>
+  <path d="M436 256Q435 263 429 270L270 429Q263 435 256 436L256 380 380 256Z" fill="url(#right)"/>
+  <path d="M256 436Q249 435 242 429L83 270Q77 263 76 256L132 256 256 380Z" fill="url(#bottom)"/>
+  <path d="M76 256Q77 249 83 242L242 83Q249 77 256 76L256 132 132 256Z" fill="url(#left)"/>
+  <path d="M267 139 373 245Q384 256 373 267L267 373Q256 384 245 373L139 267Q128 256 139 245L245 139Q256 128 267 139Z" fill="url(#face)"/>
+  <path d="M146 247 246 147Q256 137 266 147L335 216C278 190 220 231 172 265Q148 277 146 247Z" fill="#85eaff" opacity=".22"/>
+  <path d="M118 210C143 173 180 136 214 112 230 102 229 117 215 130 181 151 151 182 132 204 120 219 110 221 118 210Z" fill="url(#shine)"/>
+  <ellipse cx="231" cy="102" rx="5" ry="8" transform="rotate(45 231 102)" fill="#fff" opacity=".8"/>
+  <path d="M95 244C115 249 122 253 126 260 116 270 105 271 93 267Q82 260 95 244Z" fill="#57dcff" opacity=".75"/>
+  <path d="M401 242 421 250Q435 256 422 263L402 269 389 256Z" fill="#b6f5ff" opacity=".8"/>
+  <path d="M256 394 267 376 263 416Q258 430 252 419L245 393Q249 387 256 394Z" fill="#b9faff" opacity=".75"/>
+  <path d="M265 86 424 245Q432 252 432 256" fill="none" stroke="#b2f5ff" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+  <path d="M142 244 244 142Q256 132 267 143" fill="none" stroke="#80edff" stroke-width="3" stroke-linecap="round" opacity=".65"/>
+  <path d="M369 268 266 371Q256 380 246 371" fill="none" stroke="#169fff" stroke-width="4" stroke-linecap="round" opacity=".75"/>
 </svg>

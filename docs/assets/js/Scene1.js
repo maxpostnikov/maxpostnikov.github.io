@@ -16,15 +16,15 @@ class Scene1 extends Phaser.Scene {
     preload() {
         this.load.image("background", "assets/images/background.png");
         this.load.spritesheet("gems", "assets/images/gems.png", {
-            frameWidth: 105,
-            frameHeight: 105
+            frameWidth: 256,
+            frameHeight: 256
         });
     }
 
     create() {
         this.tileWidth = 80;
         this.tileHeight = 80;
-        this.tileScale = 80 / 105;
+        this.tileScale = this.tileWidth / 256;
         this.tileVisibilityThreshold = 1 / 3;
         this.columnLocks = new ColumnLockManager();
         this.activeResolutions = 0;

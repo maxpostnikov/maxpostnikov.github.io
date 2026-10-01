@@ -47,6 +47,20 @@ To run this project, you need a local web server. You can use Python's built-in 
 *   **Tests:** Pure gameplay modules use Node's built-in test runner.
 *   **Offline Cache:** Add every new runtime browser module to `docs/sw.js` and increment `CACHE_NAME`.
 
+## Art Style
+
+*   Modern casual mobile match-3 art: rounded, dimensional cartoon glass/resin pieces with saturated colors, smooth shading, and compact glossy reflections. Avoid heavy outlines, noisy detail, and large flat inset faces.
+*   Keep gems distinct: rose-pink square, amethyst hexagon, golden-yellow triangle, red heart, sapphire diamond, and emerald teardrop. The bomb is glossy black with a gold cap and ivory unlit fuse; rockets have no flames or exhaust; the coin is gold with a raised star.
+*   Background: dark terracotta (`#5A3A33`) with broad flowing earth layers and large flat fills. Keep layer contrast restrained and pieces readable; avoid grain, bubbles, and busy texture.
+
+## Art Technical Requirements
+
+*   Preserve **80 × 80** board cells and `gems.png` as a **1536 × 512 RGBA** sheet: **6 columns × 2 rows**, **256 × 256** frames, rendered at scale `80 / 256`.
+*   Frame order: **0–5** gems in the order above, **6** bomb, **7** rocket right, **8** rocket up, **9** coin, **10–11** empty. Center each sprite, preserve proportions, and keep its maximum extent at **208 pixels** (at least **24 pixels** transparent padding).
+*   `background.png` is one opaque **1024 × 1024** tile, seamless horizontally and vertically. Preserve smooth joins; do not stitch or mirror quadrants. Check a repeated preview and the full-screen game.
+*   Keep background HSV saturation below **0.58** so the existing wave shader excludes it. Retain the subtle sheen on pieces when changing their colors.
+*   Increment `CACHE_NAME` in `docs/sw.js` after runtime art changes; match the page background and theme color in `docs/index.html` when changing the background base.
+
 ## Linting
 
 This project uses [ESLint](https://eslint.org/) for maintaining code quality and consistency.
