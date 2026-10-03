@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match3-v31';
+const CACHE_NAME = 'match3-v32';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -26,6 +26,7 @@ const ASSETS_TO_CACHE = [
   './assets/js/specials/bomb/BombTile.js',
   './assets/js/specials/bomb/registerBombPlugin.js',
   './assets/js/view/PhaserBoardView.js',
+  './assets/js/view/DisplayMetrics.js',
   './assets/images/background.png',
   './assets/images/gems.png',
   'https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js'

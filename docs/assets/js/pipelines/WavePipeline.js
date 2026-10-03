@@ -6,8 +6,7 @@
  * 
  * Key Features:
  * - Constant 45-degree angle regardless of aspect ratio.
- * - Constant physical width (in pixels) regardless of window size.
- * - Constant physical speed (pixels/sec) regardless of window size.
+ * - Constant visual width and speed in CSS pixels, independent of pixel density.
  * - Robust against window resizing (uses absolute time-based positioning).
  * - Subtle sheen on colorful gems, excluding the muted background.
  * - Softens the brightest reflections while preserving glass detail.
@@ -88,8 +87,7 @@ export default class WavePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFX
     }
 
     onPreRender() {
-        const width = this.game.renderer.width;
-        const height = this.game.renderer.height;
+        const { width, height } = this.game.displayMetrics;
         const now = this.game.loop.now;
 
         // Constant speed: 0.6 pixels per millisecond (~600 pixels/second)

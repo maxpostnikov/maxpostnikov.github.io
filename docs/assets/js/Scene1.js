@@ -7,6 +7,7 @@ import ResolutionEngine from "./model/ResolutionEngine.js";
 import SpecialTileRegistry from "./model/SpecialTileRegistry.js";
 import registerBombPlugin from "./specials/bomb/registerBombPlugin.js";
 import PhaserBoardView from "./view/PhaserBoardView.js";
+import { configureCamera } from "./view/DisplayMetrics.js";
 
 class Scene1 extends Phaser.Scene {
     constructor() {
@@ -22,6 +23,8 @@ class Scene1 extends Phaser.Scene {
     }
 
     create() {
+        const displayMetrics = this.game.displayMetrics;
+        configureCamera(this.cameras.main, displayMetrics);
         this.tileWidth = 80;
         this.tileHeight = 80;
         this.tileScale = this.tileWidth / 256;
@@ -37,8 +40,8 @@ class Scene1 extends Phaser.Scene {
         this.background = this.add.tileSprite(
             0,
             0,
-            this.scale.width,
-            this.scale.height,
+            displayMetrics.width,
+            displayMetrics.height,
             "background"
         ).setOrigin(0, 0);
 
@@ -46,7 +49,7 @@ class Scene1 extends Phaser.Scene {
         this.effectRegistry = new EffectRegistry();
         registerBombPlugin(this.specialTileRegistry, this.effectRegistry);
 
-        const boardSize = this.getBoardSize(this.scale);
+        const boardSize = this.getBoardSize(displayMetrics);
         this.board = new BoardModel({
             ...boardSize,
             specialTileRegistry: this.specialTileRegistry,
@@ -164,8 +167,9 @@ class Scene1 extends Phaser.Scene {
     }
 
     handlePointerDown(pointer) {
-        this.swipeStartX = pointer.x;
-        this.swipeStartY = pointer.y;
+        const position = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        this.swipeStartX = position.x;
+        this.swipeStartY = position.y;
         this.swipeStartTime = pointer.time;
     }
 
@@ -174,8 +178,9 @@ class Scene1 extends Phaser.Scene {
         const swipeTime = pointer.time - this.swipeStartTime;
         if (swipeTime < this.swipeMinTime || swipeTime > this.swipeMaxTime) return;
 
-        const dx = pointer.x - this.swipeStartX;
-        const dy = pointer.y - this.swipeStartY;
+        const position = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        const dx = position.x - this.swipeStartX;
+        const dy = position.y - this.swipeStartY;
         if (Math.sqrt(dx * dx + dy * dy) < this.swipeMinDistance) return;
 
         const direction = this.getSwipeDirection(dx, dy);
@@ -226,7 +231,9 @@ class Scene1 extends Phaser.Scene {
         return this.board.isValid(neighbor) ? neighbor : null;
     }
 
-    onResize(gameSize) {
+    onResize() {
+        const gameSize = this.game.displayMetrics;
+        configureCamera(this.cameras.main, gameSize);
         if (this.background) {
             this.background.setSize(gameSize.width, gameSize.height);
         }

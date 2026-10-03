@@ -56,6 +56,7 @@ To run this project, you need a local web server. You can use Python's built-in 
 ## Art Technical Requirements
 
 *   Preserve **80 × 80** board cells and `gems.png` as a **1536 × 512 RGBA** sheet: **6 columns × 2 rows**, **256 × 256** frames, rendered at scale `80 / 256`.
+*   Render at device pixel density, capped at **3×**, while keeping board geometry, touch coordinates, and shader distances in CSS pixels. `game.displayMetrics` separates logical viewport size from render-buffer size; do not use the physical canvas size for board layout.
 *   Frame order: **0–5** gems in the order above, **6** bomb, **7** rocket right, **8** rocket up, **9** coin, **10–11** empty. Center each sprite, preserve proportions, and keep its maximum extent at **208 pixels** (at least **24 pixels** transparent padding).
 *   `background.png` is one opaque **1024 × 1024** tile, seamless horizontally and vertically. Preserve smooth joins; do not stitch or mirror quadrants. Check a repeated preview and the full-screen game.
 *   Keep background HSV saturation below **0.58** so the existing wave shader excludes it. Retain the subtle sheen on pieces when changing their colors.

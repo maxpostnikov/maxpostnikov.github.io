@@ -85,7 +85,8 @@ export default class ExplosionPipeline extends Phaser.Renderer.WebGL.Pipelines.P
 
     onPreRender() {
         if (this.game.renderer) {
-            this.set2f("uResolution", this.game.renderer.width, this.game.renderer.height);
+            const { width, height } = this.game.displayMetrics;
+            this.set2f("uResolution", width, height);
         }
     }
 }
